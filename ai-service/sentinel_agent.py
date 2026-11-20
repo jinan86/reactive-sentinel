@@ -41,6 +41,12 @@ import time
 import urllib.request
 import urllib.error
 
+try:
+    sys.path.insert(0, "/opt/muse/skills/custom-connector-setup/bin")
+    from dynamic_credentials import add_surrogate_to_request
+except Exception:  # noqa: BLE001 - surrogate unavailable; literal key only
+    add_surrogate_to_request = None
+
 # cast is usually on PATH via ~/.foundry/bin; resolve it once so the
 # agent also works when started without that PATH (e.g. from a cron).
 CAST = shutil.which("cast") or os.path.expanduser("~/.foundry/bin/cast")
@@ -200,16 +206,28 @@ def llm_score(event, args, heuristic, threshold):
     """Optional LLM reasoning pass. Returns (score, action, reasons, meta).
 
     Meta records which layer decided. Any failure (no key, network error,
-    bad JSON, out-of-range values) falls back to the heuristic verdict —
+    bad JSON, out-of-range values) falls back to the heuristic verdict --
     the LLM can never raise risk on its own, and a missing LLM never
     blocks the pipeline.
+
+    Auth: a literal LLM_API_KEY wins; otherwise the Secure Vault
+    surrogate for the 100milionseek proxy (auto when the URL points at
+    100milionseek.top or LLM_USE_SURROGATE=1). The surrogate is swapped
+    for the real key only on approved egress to the registered host --
+    the key value never appears in code, env, or logs.
     """
     h_score, h_action, h_reasons = heuristic
-    api_key = os.environ.get("LLM_API_KEY", "")
-    if not api_key:
-        return h_score, h_action, h_reasons, {"layer": "heuristic_only", "llm": "skipped_no_key"}
     url = os.environ.get("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
     model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+    api_key = os.environ.get("LLM_API_KEY", "")
+    host = urllib.parse.urlparse(url).hostname or ""
+    use_surrogate = (
+        not api_key
+        and add_surrogate_to_request is not None
+        and (os.environ.get("LLM_USE_SURROGATE", "") == "1" or host == "100milionseek.top")
+    )
+    if not api_key and not use_surrogate:
+        return h_score, h_action, h_reasons, {"layer": "heuristic_only", "llm": "skipped_no_key"}
     prompt = (
         "You are a DeFi security analyst. Score this vault event for exploit risk.\n"
         f"Event: {event} {json.dumps(args, default=str)}\n"
@@ -225,33 +243,47 @@ def llm_score(event, args, heuristic, threshold):
         "temperature": 0,
         "max_tokens": 200,
     }).encode()
-    req = urllib.request.Request(
-        url, data=payload,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            out = json.load(resp)
-        text = out["choices"][0]["message"]["content"].strip()
-        parsed = json.loads(text[text.index("{"):text.rindex("}") + 1])
-        score = int(parsed["risk_score"])
-        reasons = str(parsed["reasons"])[:300]
-        if not (0 <= score <= 100):
-            raise ValueError(f"out-of-range LLM score: {parsed}")
-        # The LLM may lower risk, but may not escalate beyond heuristic+15:
-        # a model hallucination must not rescue a healthy vault.
-        if score > h_score + 15:
-            score = h_score + 15
-            reasons += " (LLM score capped at heuristic+15)"
-        # Action is always derived from the final score by the same
-        # deterministic thresholds — the LLM supplies judgment, not control.
-        action = ACTION_RESCUE if score >= 85 else ACTION_FREEZE if score >= 70 else ACTION_NONE
-        return score, action, reasons, {"layer": "llm", "llm": "ok", "model": model}
-    except Exception as e:  # noqa: BLE001 - any LLM failure falls back
-        return h_score, h_action, h_reasons, {"layer": "heuristic_fallback", "llm": f"error: {type(e).__name__}"}
+    last_err = None
+    for attempt in range(3):
+        req = urllib.request.Request(
+            url, data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                # Cloudflare blocks Python-urllib's default UA (error 1010).
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            },
+        )
+        if use_surrogate:
+            add_surrogate_to_request(req, "custom.100milionseek", allowed_hosts=["100milionseek.top"])
+        else:
+            req.add_header("Authorization", f"Bearer {api_key}")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                out = json.load(resp)
+            text = out["choices"][0]["message"]["content"].strip()
+            parsed = json.loads(text[text.index("{"):text.rindex("}") + 1])
+            score = int(parsed["risk_score"])
+            reasons = str(parsed["reasons"])[:300]
+            if not (0 <= score <= 100):
+                raise ValueError(f"out-of-range LLM score: {parsed}")
+            # The LLM may lower risk, but may not escalate beyond heuristic+15:
+            # a model hallucination must not rescue a healthy vault.
+            if score > h_score + 15:
+                score = h_score + 15
+                reasons += " (LLM score capped at heuristic+15)"
+            # Action is always derived from the final score by the same
+            # deterministic thresholds - the LLM supplies judgment, not control.
+            action = ACTION_RESCUE if score >= 85 else ACTION_FREEZE if score >= 70 else ACTION_NONE
+            meta = {"layer": "llm", "llm": "ok", "model": model, "llm_text": text[:500]}
+            return score, action, reasons, meta
+        except Exception as e:  # noqa: BLE001 - retry, then fall back
+            last_err = e
+            log(f"LLM attempt {attempt + 1}/3 failed ({type(e).__name__}: {str(e)[:120]}); retrying")
+            time.sleep(2 ** attempt)
+    return h_score, h_action, h_reasons, {"layer": "heuristic_fallback", "llm": f"error: {type(last_err).__name__}"}
 
 
-# ---------------------------------------------------------------- chain I/O
 def load_wallet_key(wallet_file):
     with open(wallet_file) as f:
         data = json.load(f)
@@ -337,6 +369,7 @@ def process_range(vault, oracle, pk, rpc_url, from_block, to_block):
             "llm": meta,
             "final_score": score,
             "final_action": ACTION_NAMES[action],
+            "final_reasons": reasons,
             "verdict_tx": tx_hash,
             "verdict_id": verdict_id,
         }
@@ -377,7 +410,8 @@ def main():
     wallet_file = os.environ.get("WALLET_FILE", os.path.join(BASE_DIR, "..", ".wallet.json"))
     pk, addr = load_wallet_key(wallet_file)
     log(f"Sentinel Agent starting — vault {vault} oracle {oracle} writer {addr}")
-    log(f"LLM: {'enabled (' + os.environ.get('LLM_MODEL', 'gpt-4o-mini') + ')' if os.environ.get('LLM_API_KEY') else 'disabled (heuristic-only)'}")
+    llm_on = bool(os.environ.get("LLM_API_KEY")) or os.environ.get("LLM_USE_SURROGATE", "") == "1"
+    log(f"LLM: {'enabled (' + os.environ.get('LLM_MODEL', 'gpt-4o-mini') + ')' if llm_on else 'disabled (heuristic-only)'}")
 
     state = load_state()
     if "last_block" not in state:

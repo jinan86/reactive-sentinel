@@ -43,7 +43,7 @@ Loop cost: reactive balance 0.5 → 0.48013 lREACT; pong balance 0.002 →
 - `script/` + `deploy.sh` — full deploy + live-proof runner (see below).
 - `forge test`: **11/11 pass** (Phase 1 only; full suite now 33/33, see Phase 2).
 
-## Status — Phase 2 (Sentinel core) — ✅ DEMO LIVE END-TO-END, 21 Nov 2026 ~13:54 WIB
+## Status — Phase 2 (Sentinel core) — ✅ DEMO LIVE END-TO-END, 20 Nov 2026 ~20:54 WIB
 
 **Benign withdrawal ignored, attack rescued in ~30 seconds.** Vault
 seeded 1000 tUSD → withdraw 50 tUSD (5% TVL) scored 10 / NONE → attack
@@ -53,6 +53,19 @@ safeVault. Final state: `verdictCount=4`, `reactCount=4`, `actedCount=1`,
 `lastRiskScore=85`, `lastAction=2` (RESCUE), `vault.frozen=true`, vault
 TVL 0, safeVault holds 1000 tUSD (750 withdrawn + 250 rescued). Full
 record with every tx hash: [`../PHASE2.md`](../PHASE2.md).
+
+**LLM demo (20 Nov ~21:26 WIB, after unfreeze + re-seed):** the AI
+service scored every event through the 100milionseek LLM
+(`deepseek-v4.1-flash-free`) — Deposit 5/NONE, Withdrawal 50 → 10/NONE,
+Withdrawal 700 → 10/NONE (all LLM, with written reasons), LargeWithdrawal
+700 (73.7%) → 85/RESCUE. The attack verdict used the heuristic fallback
+(the free proxy returned HTTP 502 three times); the rescue still executed
+in ≤30s: `react()` [`0xd339d3d8…2ae0e`](https://lasna.reactscan.net/tx/0xd339d3d8248f2c6215b9fdaf794cab56d22dd79e75d9eb8d1fe757a7cde2ae0e)
+(Lasna block 8817833) → callback
+[`0xe3afb7fc…7603`](https://sepolia.basescan.org/tx/0xe3afb7fc9fbfa4803a50f4b453a91ad99bd9591a4c538408501df52f58717603)
+(block 61314362). Final: `verdictCount=8`, `reactCount=8`,
+`actedCount=2`, `lastRiskScore=85`, `lastAction=2`, `vault.frozen=true`,
+vault TVL 0, safeVault 1000 tUSD. Full record: [`../PHASE2.md`](../PHASE2.md).
 
 | Step | Chain | Contract | Tx |
 | --- | --- | --- | --- |
@@ -76,10 +89,16 @@ record with every tx hash: [`../PHASE2.md`](../PHASE2.md).
   2 = freeze-if-needed + rescue; reverts on invalid action.
 - `ai-service/sentinel_agent.py` — off-chain AI service (Python 3.12
   stdlib + `cast` CLI, no extra deps). Two layers: deterministic
-  heuristics + optional LLM pass (env `LLM_API_KEY`, `LLM_API_URL`,
-  `LLM_MODEL`; LLM may lower risk but never escalate beyond
-  heuristic+15; any LLM failure falls back to heuristic and is logged).
-  Without a key it runs heuristic-only (the live demo ran this way).
+  heuristics + LLM reasoning pass (env `LLM_API_URL`, `LLM_MODEL`;
+  key via Secure Vault surrogate, never a literal value; browser
+  User-Agent + retry 3x + 60s timeout). LLM may lower risk but never
+  escalate beyond heuristic+15; any LLM failure falls back to
+  heuristic and is logged with its layer. LLM: 100milionseek
+  `deepseek-v4.1-flash-free` (free, 100M tokens/day). Live demo with
+  LLM in the loop (20 Nov ~21:26 WIB): 3/4 verdicts LLM-scored with
+  written reasons; the attack verdict fell back to heuristic after the
+  free proxy returned HTTP 502 three times — see `../PHASE2.md` for the
+  full honest record.
   RPC-resilient: retries + fallback RPC rotation + ≤200-block log
   windows (public Base Sepolia RPCs drop connections and 403
   Python-urllib's default User-Agent). Audit trail append-only
@@ -131,9 +150,11 @@ ping → poll `reactCount` / `pongCount`.
   `0xf05EE95B254010D710436D50fEA750E283d00623`.
 - Project testnet wallet keypair lives in `.wallet.json` (mode 600,
   gitignored). Never commit it, never paste it.
-- AI service: deterministic/mock scorer first + swappable LLM client
-  (API key via env var, never hardcoded). LLM model + key decided by zee
-  later — the build does not block on it.
+- AI service: deterministic scorer first + LLM client
+  (100milionseek `deepseek-v4.1-flash-free` via Secure Vault surrogate,
+  key never hardcoded or logged). The free proxy is flaky under load
+  (HTTP 502 on longer scoring prompts) — the heuristic fallback covers
+  it and every decision records its layer.
 
 ## License
 

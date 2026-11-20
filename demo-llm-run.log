@@ -1,0 +1,63 @@
+Vault: 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E  Oracle: 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC  Reactive: 0x62f29479A81B2DE7A871518cEDA38Fbe8B96d724  Guard: 0x974C8F676a0f7375329c94E360A492Ca7827044f
+LLM: deepseek-v4.1-flash-free via https://100milionseek.top/v1/chat/completions (surrogate auth)
+Baselines: verdictCount=4 reactCount=4 actedCount=1
+Vault frozen before: true
+
+=== Step 0: unfreeze + re-seed 1000 tUSD ===
+unfreeze tx: 0x8c17268864a9c66256d099e348c92f0ddae7a3cf5c207bc55363b0ea54734d78
+approve tx: 0x94522c0f5ff68b019eb94223697aec3aca5c5d51aa1e8b18b879260611355fd1
+seed deposit tx: 0x73719be161c52997ac749ada0f0618e4cfb377dddfb9656e2e13b1a0bc95b751
+TVL after seed: 1000 tUSD
+Vault frozen after unfreeze: false
+
+=== Scenario 1: benign withdrawal 50 tUSD (5%) ===
+withdraw tx: 0xbaa35d8c5b9e94e7c298b07bd2f8f91b5707a902ee8a8beed320076f7dfd6d54
+--- AI service (LLM) : scoring new vault events ---
+[14:20:36] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[14:20:36] LLM: enabled (deepseek-v4.1-flash-free)
+[14:20:44] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:20:47] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:20:52] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:20:58] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:21:00] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:21:03] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:21:22] block 61312820 Deposit {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 1000000000000000000000, 'balance': 1000000000000000000000} -> score 5 action NONE (llm) verdict_tx 0x389cf6d00b9db6102a3926fa9474f26b93aff404f1f59ee8631412a8b1fa7c19
+[14:21:37] block 61312842 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 50000000000000000000, 'balance': 950000000000000000000} -> score 10 action NONE (llm) verdict_tx 0x67257c8345c8e5a541157993a77adb9f2a12c492285bd3b17599c9c6b413a56c
+[14:21:37] done: 2 event(s) processed
+latest decisions:
+  Deposit block 61312820: score 5 NONE layer=llm llm=ok reasons=This is an ordinary deposit of 1000 tokens with no withdrawal, price anomaly, or drain pattern, so it poses no exploit risk.
+  Withdrawal block 61312842: score 10 NONE layer=llm llm=ok reasons=A single 50-token withdrawal representing roughly 5% of the 1000-token prior balance, with no accompanying price crash, repeated drains, or privileged-role anomaly, matches ordinary user activity rather than the large-withdrawal-after-price-drop exploit pattern.
+oracle verdictCount: 6
+reactive reactCount: 6 actedCount: 1
+vault frozen: false
+TVL now: 950 tUSD
+
+=== Scenario 2: ATTACK — withdraw 700 tUSD (~74% of remaining TVL) ===
+attack tx: 0x9586d0547be3e3b9a100d42e747dcb190d66cd5fd1b4ba39044ded8cf3da0cb1
+--- AI service (LLM) : scoring new vault events ---
+[14:21:50] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[14:21:50] LLM: enabled (deepseek-v4.1-flash-free)
+[14:21:50] RPC eth_blockNumber via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[14:21:52] RPC eth_blockNumber via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[14:22:54] block 61313203 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'balance': 250000000000000000000} -> score 10 action NONE (llm) verdict_tx 0xab05012695b3e07c49f1d97926ac4de896de7e5182e7de3221363acf36798a97
+[14:23:31] LLM attempt 1/3 failed (HTTPError: HTTP Error 502: Bad Gateway); retrying
+[14:24:30] LLM attempt 2/3 failed (HTTPError: HTTP Error 502: Bad Gateway); retrying
+[14:25:32] LLM attempt 3/3 failed (TimeoutError: The read operation timed out); retrying
+[14:25:39] block 61313203 LargeWithdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'shareBps': 7368} -> score 85 action RESCUE (heuristic_fallback) verdict_tx 0xb78f92acbe0d070db743e84e6ad7a45f9306dc2dfce34011c891b4711d4e4955
+[14:25:39] done: 2 event(s) processed
+latest decisions:
+  Withdrawal block 61313203: score 10 NONE layer=llm llm=ok reasons=The withdrawal is a single ordinary-sized move with no accompanying price drop or drain pattern, so it does not meet the exploit criteria for freezing or rescue.
+  LargeWithdrawal block 61313203: score 85 RESCUE layer=heuristic_fallback llm=error: TimeoutError reasons=large withdrawal 73.7% of TVL in one tx
+oracle verdictCount: 8
+Waiting for react() + callback (up to 10 min; need actedCount > 1 and frozen=true)...
+  [30s] reactCount=8 actedCount=2 frozen=true
+
+=== Final state ===
+vault frozen: true
+vault TVL: 0 tUSD
+safeVault (deployer) tUSD: 1000
+oracle verdictCount: 8
+reactive reactCount: 8 actedCount: 2 lastRiskScore: 85 lastAction: 2
+reactive balance: 0.378783500000000000 lREACT
+guard balance: 0.000998409967600000 ETH
+decisions log: ai-service/decisions.jsonl
