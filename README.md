@@ -41,7 +41,51 @@ Loop cost: reactive balance 0.5 → 0.48013 lREACT; pong balance 0.002 →
   event is emitted on the Base Sepolia fork, its log is fed to `react()`
   on the Lasna fork as SYSTEM, and the callback request is verified.
 - `script/` + `deploy.sh` — full deploy + live-proof runner (see below).
-- `forge test`: **11/11 pass.**
+- `forge test`: **11/11 pass** (Phase 1 only; full suite now 33/33, see Phase 2).
+
+## Status — Phase 2 (Sentinel core) — ✅ DEMO LIVE END-TO-END, 21 Nov 2026 ~13:54 WIB
+
+**Benign withdrawal ignored, attack rescued in ~30 seconds.** Vault
+seeded 1000 tUSD → withdraw 50 tUSD (5% TVL) scored 10 / NONE → attack
+withdraw 700 tUSD (73.7% of TVL) scored 85 / RESCUE → reactive on Lasna
+→ callback froze the vault and rescued the remaining 250 tUSD to the
+safeVault. Final state: `verdictCount=4`, `reactCount=4`, `actedCount=1`,
+`lastRiskScore=85`, `lastAction=2` (RESCUE), `vault.frozen=true`, vault
+TVL 0, safeVault holds 1000 tUSD (750 withdrawn + 250 rescued). Full
+record with every tx hash: [`../PHASE2.md`](../PHASE2.md).
+
+| Step | Chain | Contract | Tx |
+| --- | --- | --- | --- |
+| attack withdraw 700 tUSD | Base Sepolia | DemoVault `0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E` | [`0x4157bf8a…ebcfa`](https://sepolia.basescan.org/tx/0x4157bf8aa2aff10c29bffdc96b2d0c7d547d26fd30468f035c985c41180ebcfa) (block 61304825) |
+| verdict RESCUE (score 85) | Base Sepolia | VerdictOracle `0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC` | [`0xb93b1475…3ca2`](https://sepolia.basescan.org/tx/0xb93b1475882b54c037dab60a1660d8e6c17dd489bfc8497efd4072263e853ca2) (verdict #3) |
+| `react()` | Lasna | SentinelReactive `0x62f29479A81B2DE7A871518cEDA38Fbe8B96d724` | [`0x504a7e22…07664`](https://lasna.reactscan.net/tx/0x504a7e220e9b003ed1a9d4d8b386155a8dc1436485b13bd5665f58d6a1907664) (block 8816037; riskScore 85, action 2) |
+| callback freeze + rescue | Base Sepolia | VaultGuard `0x974C8F676a0f7375329c94E360A492Ca7827044f` | [`0x8640572f…6025`](https://sepolia.basescan.org/tx/0x8640572f9103a34124b2aba8317bfa8786cfaff2d2c75312c8e45d0547c66025) (block 61304912) |
+
+- `src/DemoToken.sol` — mock ERC20 tUSD (owner-only mint).
+- `src/DemoVault.sol` — holds tUSD; emits Deposit / Withdrawal /
+  LargeWithdrawal (≥25% TVL) / PriceDeviation (≥5% move); `freeze()`
+  guard-or-owner, `unfreeze()` owner-only, `rescue()` guard-only,
+  requires frozen, moves all funds to safeVault.
+- `src/VerdictOracle.sol` — writer-only `writeVerdict(vault, riskScore,
+  action, reasons)`; `Verdict` event.
+- `src/SentinelReactive.sol` — Lasna; subscribes to Verdict events;
+  `RISK_THRESHOLD = 70`; below threshold or action NONE → record only,
+  no callback; ≥70 + FREEZE/RESCUE → callback to VaultGuard
+  (`CALLBACK_GAS_LIMIT = 300_000`).
+- `src/VaultGuard.sol` — Base Sepolia; `execute()` — 1 = freeze,
+  2 = freeze-if-needed + rescue; reverts on invalid action.
+- `ai-service/sentinel_agent.py` — off-chain AI service (Python 3.12
+  stdlib + `cast` CLI, no extra deps). Two layers: deterministic
+  heuristics + optional LLM pass (env `LLM_API_KEY`, `LLM_API_URL`,
+  `LLM_MODEL`; LLM may lower risk but never escalate beyond
+  heuristic+15; any LLM failure falls back to heuristic and is logged).
+  Without a key it runs heuristic-only (the live demo ran this way).
+  RPC-resilient: retries + fallback RPC rotation + ≤200-block log
+  windows (public Base Sepolia RPCs drop connections and 403
+  Python-urllib's default User-Agent). Audit trail append-only
+  `ai-service/decisions.jsonl`; checkpoint `ai-service/state.json`.
+- `test/Sentinel.t.sol` — 22 tests. `forge test`: **33/33 pass**
+  (22 Sentinel + 10 Ping + 1 fork).
 
 ## Funding (done)
 
@@ -57,8 +101,10 @@ trail: `FUNDING.md` + `../PHASE1.md`.
 
 ```bash
 forge build
-forge test          # 11 tests, incl. the two-chain fork test
+forge test          # 33 tests, incl. the two-chain fork test
 ./deploy.sh         # needs funded wallet; deploys + proves the live loop
+./deploy-phase2.sh  # deploys the Sentinel core (DemoVault, Oracle, Reactive, Guard)
+./demo-attack.sh    # benign + attack demo end-to-end (vault must be unfrozen + seeded)
 ```
 
 Deploy order (enforced by `deploy.sh`): emitter (Base Sepolia) →
