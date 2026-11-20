@@ -1,0 +1,107 @@
+Vault: 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E  Oracle: 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC  Reactive: 0x62f29479A81B2DE7A871518cEDA38Fbe8B96d724  Guard: 0x974C8F676a0f7375329c94E360A492Ca7827044f
+LLM: deepseek-v4.1-flash-free via https://100milionseek.top/v1/chat/completions (surrogate auth)
+Baselines: verdictCount=8 reactCount=8 actedCount=2
+Vault frozen before: true
+
+=== Step 0: unfreeze + re-seed 1000 tUSD ===
+unfreeze tx: 0x113bf707a3886016700d448c05c224e23e4541c6f2bf2b254a190907b2d5f5e4
+approve tx: 0x35e8e11e9cc0d50638b6bce7d9f1ba81c7714be3f94fdc9fdbc881c0c37fd68b
+seed deposit tx: 0x9684864c94a2da146d155c2725facd124d6af7e2542f1fd5d50c86e034f52c5c
+TVL after seed: 1000 tUSD
+Vault frozen after unfreeze: false
+
+=== Scenario 1: benign withdrawal 50 tUSD (5%) ===
+withdraw tx: 0x78a23ba2afa4bb72f263b624b4bb793922fde4318ae69890aafcecbf25040fee
+--- AI service (LLM) : scoring new vault events ---
+[23:23:12] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[23:23:12] LLM: enabled (deepseek-v4.1-flash-free)
+[23:23:20] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:22] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:23:24] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:23:30] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:34] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:37] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:43] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:49] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:23:51] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:23:53] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:23:58] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:00] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:24:02] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:24:12] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:14] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:24:16] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:24:23] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:26] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:30] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (IncompleteRead(0 bytes read, 36 more expected)); retrying in 1s
+[23:24:34] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:39] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:43] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:50] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:24:55] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:02] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:03] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:25:06] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (Remote end closed connection without response); retrying in 4s
+[23:25:13] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:16] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:19] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:23] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:25] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:28] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:31] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:36] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:39] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:45] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:48] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:52] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:25:57] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:05] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:14] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:21] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:27] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:29] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:26:31] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:26:37] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:41] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:42] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:26:45] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:26:54] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:26:59] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:03] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:05] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:07] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:09] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:14] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:16] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:18] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:27:21] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (Remote end closed connection without response); retrying in 4s
+[23:27:28] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:35] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:41] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:27:49] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:28:00] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[23:28:01] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 2/5 failed (Remote end closed connection without response); retrying in 2s
+[23:28:04] RPC eth_getLogs via https://base-sepolia.drpc.org attempt 3/5 failed (HTTP Error 400: Bad Request); retrying in 4s
+[23:28:09] RPC eth_getLogs via https://sepolia.base.org attempt 4/5 failed (Remote end closed connection without response); retrying in 8s
+[23:28:17] RPC eth_getLogs via https://base-sepolia-rpc.publicnode.com attempt 5/5 failed (Remote end closed connection without response); retrying in 16s
+[23:28:33] --once attempt 1/3 failed (RPC eth_getLogs failed after 5 attempts: Remote end closed connection without response); retrying
+
+=== RESUMED MANUALLY 23:28 UTC (06:28 WIB) — demo-llm.sh dihentikan saat agent tersangkut ===
+Alasan: agent --once memindai 162.803 blok (state.json last_block 61313236 -> tip ~61476865) dalam jendela 200 blok; eth_getLogs di sepolia.base.org/publicnode/drpc berulang kali putus (RemoteDisconnected) sehingga scan tak kunjung selesai. Bukti aman lompat: nonce deployer berurutan 25 (attack demo lama) -> 26,27 (verdict #6,#7) -> 28 unfreeze; tidak ada tx deployer lain di antaranya, jadi tidak ada event vault di rentang itu. state.json dipindah ke last_block 61475586 (blok unfreeze - 1). Langkah Step 0 + Scenario 1 TIDAK diulang (sudah on-chain).
+--- agent --once #1 (23:28:59-23:29:20 UTC) ---
+verdict #8 Deposit 1000 block 61475603: score 5 NONE (llm) tx 0x8d163577961439b608c2b85eb6f1e536dfe4b493202e30e0fffbdd10e4618a97
+verdict #9 Withdrawal 50 block 61475623: score 10 NONE (llm) tx 0x56fc14dc1e0d09a1de8baa68cf84a0601bee30a6a2ffac5657b656eb4de1e00a
+--- Scenario 2 attack ---
+attack withdraw 700 tx 0x70b4a4a7ca72cadd3f7c66d241e81dc909cf19e40ff00887b0a4d8f49c01bf76 block 61477508, TVL 250
+--- agent --once #2 (23:29:35-23:30:11 UTC) ---
+verdict #10 Withdrawal 700 block 61477508: score 15 NONE (llm) tx 0x0dcb54b4cd9a1218e5b68e3563b0bf1770d0691f5f52a48bfe4bd61670d23766
+verdict #11 LargeWithdrawal 700 block 61477508: score 85 RESCUE (llm) tx 0x3c872719fb382ed56f269132f28f5b8c2dd71ed9bf43a1829a155d39a565238d
+  LLM attempt 1 gagal (ValueError: substring not found - model kembalikan konten kosong), attempt 2 gagal (HTTP 502), attempt 3 BERHASIL.
+--- react + callback ---
+react() Lasna tx 0x8bac812021bad464e0511763ac2ef61b1bc7cdea8c275b0d8ac06608a9ef6ce6 block 8848628 (VerdictSeen id 11, riskScore 85, action 2, acted=true)
+callback Base Sepolia tx 0x245f13520e16590749c546ef243d576d87fbe96c0a98ddadc1c1978e45e03967 block 61477717 status 1 (Frozen + Rescued 250 tUSD + GuardExecuted action 2)
+poll pertama (30 dtk): reactCount=12 actedCount=3 frozen=true — RESCUE COMPLETE
+=== Final state (RPC publik) ===
+vault frozen=true, TVL 0 tUSD, safeVault (deployer) 1000 tUSD
+oracle verdictCount=12; reactive reactCount=12 actedCount=3 lastRiskScore=85 lastAction=2
+reactive 0.3220138 lREACT; guard 0.0009976 ETH; deployer Base ETH 0.0049521

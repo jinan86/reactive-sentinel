@@ -1,0 +1,7 @@
+[23:29:35] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[23:29:35] LLM: enabled (deepseek-v4.1-flash-free)
+[23:29:43] block 61477508 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'balance': 250000000000000000000} -> score 15 action NONE (llm) verdict_tx 0x0dcb54b4cd9a1218e5b68e3563b0bf1770d0691f5f52a48bfe4bd61670d23766
+[23:29:53] LLM attempt 1/3 failed (ValueError: substring not found); retrying
+[23:30:03] LLM attempt 2/3 failed (HTTPError: HTTP Error 502: Bad Gateway); retrying
+[23:30:11] block 61477508 LargeWithdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'shareBps': 7368} -> score 85 action RESCUE (llm) verdict_tx 0x3c872719fb382ed56f269132f28f5b8c2dd71ed9bf43a1829a155d39a565238d
+[23:30:11] done: 2 event(s) processed

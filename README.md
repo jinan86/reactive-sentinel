@@ -67,6 +67,22 @@ in ≤30s: `react()` [`0xd339d3d8…2ae0e`](https://lasna.reactscan.net/tx/0xd33
 `actedCount=2`, `lastRiskScore=85`, `lastAction=2`, `vault.frozen=true`,
 vault TVL 0, safeVault 1000 tUSD. Full record: [`../PHASE2.md`](../PHASE2.md).
 
+**Demo ulang #2 (21 Nov ~06:31 WIB, setelah unfreeze + re-seed):** semua
+4 verdict dinilai LLM — Deposit 5/NONE, Withdrawal 50 → 10/NONE,
+Withdrawal 700 → 15/NONE, LargeWithdrawal 700 (73.7%) → **85/RESCUE
+(LLM)**. Attack verdict:
+[`0x3c872719…5238d`](https://sepolia.basescan.org/tx/0x3c872719fb382ed56f269132f28f5b8c2dd71ed9bf43a1829a155d39a565238d)
+(verdict #11, blok 61477709) → `react()`
+[`0x8bac8120…ef6ce6`](https://lasna.reactscan.net/tx/0x8bac812021bad464e0511763ac2ef61b1bc7cdea8c275b0d8ac06608a9ef6ce6)
+(Lasna blok 8848628) → callback
+[`0x245f1352…e03967`](https://sepolia.basescan.org/tx/0x245f13520e16590749c546ef243d576d87fbe96c0a98ddadc1c1978e45e03967)
+(blok 61477717; Frozen + Rescued 250 tUSD). Final: `verdictCount=12`,
+`reactCount=12`, `actedCount=3`, `lastRiskScore=85`, `lastAction=2`,
+`vault.frozen=true`, vault TVL 0, safeVault 1000 tUSD. Catatan jujur:
+penilaian #11 sukses di percobaan LLM ke-3 (percobaan 1 konten kosong,
+ke-2 HTTP 502) — proxy gratis ini flaky, retry 3x yang menyelamatkan.
+Full record: [`../PHASE2.md`](../PHASE2.md).
+
 | Step | Chain | Contract | Tx |
 | --- | --- | --- | --- |
 | attack withdraw 700 tUSD | Base Sepolia | DemoVault `0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E` | [`0x4157bf8a…ebcfa`](https://sepolia.basescan.org/tx/0x4157bf8aa2aff10c29bffdc96b2d0c7d547d26fd30468f035c985c41180ebcfa) (block 61304825) |
@@ -97,8 +113,10 @@ vault TVL 0, safeVault 1000 tUSD. Full record: [`../PHASE2.md`](../PHASE2.md).
   `deepseek-v4.1-flash-free` (free, 100M tokens/day). Live demo with
   LLM in the loop (20 Nov ~21:26 WIB): 3/4 verdicts LLM-scored with
   written reasons; the attack verdict fell back to heuristic after the
-  free proxy returned HTTP 502 three times — see `../PHASE2.md` for the
-  full honest record.
+  free proxy returned HTTP 502 three times. Demo ulang #2 (21 Nov
+  ~06:31 WIB): all 4 verdicts LLM-scored, including the attack verdict
+  (85/RESCUE, LLM on retry 3 after an empty reply and a 502) — see
+  `../PHASE2.md` for the full honest record.
   RPC-resilient: retries + fallback RPC rotation + ≤200-block log
   windows (public Base Sepolia RPCs drop connections and 403
   Python-urllib's default User-Agent). Audit trail append-only

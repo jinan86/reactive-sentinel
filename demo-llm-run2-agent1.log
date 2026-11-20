@@ -1,0 +1,5 @@
+[23:28:59] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[23:28:59] LLM: enabled (deepseek-v4.1-flash-free)
+[23:29:12] block 61475603 Deposit {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 1000000000000000000000, 'balance': 1000000000000000000000} -> score 5 action NONE (llm) verdict_tx 0x8d163577961439b608c2b85eb6f1e536dfe4b493202e30e0fffbdd10e4618a97
+[23:29:20] block 61475623 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 50000000000000000000, 'balance': 950000000000000000000} -> score 10 action NONE (llm) verdict_tx 0x56fc14dc1e0d09a1de8baa68cf84a0601bee30a6a2ffac5657b656eb4de1e00a
+[23:29:20] done: 2 event(s) processed
