@@ -23,14 +23,17 @@ echo "Deployer: $ADDR"
 BASE_BAL=$(cast balance "$ADDR" --rpc-url "$BASE_RPC")
 BASE_BAL_ETH=$(cast to-unit "$BASE_BAL" ether)
 echo "Base Sepolia balance: $BASE_BAL_ETH ETH"
-if [ "$(cast to-unit "$BASE_BAL" wei | cut -d. -f1)" -lt 200000000000000000 ]; then
-  echo "ERROR: need >= 0.2 Sepolia ETH in $ADDR (see FUNDING.md). Aborting before spending anything."
+if [ "$(cast to-unit "$BASE_BAL" wei | cut -d. -f1)" -lt 40000000000000000 ]; then
+  echo "ERROR: need >= 0.04 Sepolia ETH in $ADDR (see FUNDING.md). Aborting before spending anything."
   exit 1
 fi
 
-echo "=== Step 0: convert 0.1 Sepolia ETH -> 10 lREACT (Lasna faucet) ==="
-# Documented faucet call: request(address) with 0.1 ETH value, 1 ETH = 100 lREACT.
-cast send "$FAUCET_BASE" "request(address)" "$ADDR" --value 0.1ether --rpc-url "$BASE_RPC" --private-key "$PK" --json | python3 -c "import json,sys;d=json.load(sys.stdin);print('faucet tx:',d.get('transactionHash'))"
+echo "=== Step 0: convert 0.04 Sepolia ETH -> 4 lREACT (Lasna faucet) ==="
+# Documented faucet call: request(address) with ETH value, 1 ETH = 100 lREACT.
+# (Adapted 20 Nov: only 0.05 ETH was claimed from the Google faucet, 0.048
+# bridged to Base Sepolia; 4 lREACT still covers deploy + many react() calls
+# at ~0.035 lREACT each.)
+cast send "$FAUCET_BASE" "request(address)" "$ADDR" --value 0.04ether --rpc-url "$BASE_RPC" --private-key "$PK" --json | python3 -c "import json,sys;d=json.load(sys.stdin);print('faucet tx:',d.get('transactionHash'))"
 sleep 10
 echo -n "Lasna balance after conversion: "
 cast balance "$ADDR" --rpc-url "$LASNA_RPC" | xargs -I{} cast to-unit {} ether | xargs echo -n
@@ -47,7 +50,10 @@ REACTIVE=$(python3 -c "import json;print(json.load(open('deployments/lasna.json'
 echo "Reactive: $REACTIVE"
 
 echo "=== Step 3: deploy Pong (Base Sepolia) ==="
-REACTIVE_ADDRESS="$REACTIVE" forge script script/DeployPong.s.sol --rpc-url "$BASE_RPC" --private-key "$PK" --broadcast
+# PONG_FUND 0.002 ETH (reduced from the 0.01 default: only ~0.008 ETH
+# remains on Base Sepolia after the 0.04 ETH faucet conversion; one callback
+# costs ~0.0000015 ETH, so 0.002 is ample).
+PONG_FUND=0.002ether REACTIVE_ADDRESS="$REACTIVE" forge script script/DeployPong.s.sol --rpc-url "$BASE_RPC" --private-key "$PK" --broadcast
 PONG=$(python3 -c "import json;print(json.load(open('deployments/pong.json'))['pong'])")
 echo "Pong: $PONG"
 

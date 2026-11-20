@@ -1,5 +1,19 @@
 # FUNDING.md — how the hello-world loop gets its testnet gas
 
+## ✅ FUNDED 20 Nov 2026 (0.05 Sepolia ETH claimed, loop proven 21 Nov ~00:05 WIB)
+
+The project wallet `0x9e377851c1DF9aCB840d5081572E3AF7C45ac449` received
+**0.05 Sepolia ETH** from the Google Cloud Web3 faucet (Ethereum Sepolia,
+tx `0x2ee3490c990339800a6d0047ddcd301d8a096db03b9f39956b6871d17d91f824`,
+block 12175492). It was bridged to Base Sepolia (0.048 ETH via the
+official L1StandardBridge, ~6 min to land) and 0.04 ETH was converted to
+4 lREACT via the Lasna faucet. Loop proven live (`reactCount=1`,
+`pongCount=1`, `lastValue=777`). Remaining: ~0.006 ETH Base Sepolia,
+~3.5 lREACT Lasna — enough for Phase 2 deploys + demo pings. Full trail:
+`../PHASE1.md`.
+
+Original blocker notes (kept for the record):
+
 ## The blocker (as of 20 Nov 2026 ~21:30 WIB)
 
 The project wallet is **empty on every testnet**. No Sepolia ETH could be

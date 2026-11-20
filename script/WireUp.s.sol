@@ -13,7 +13,7 @@ contract WireUp is Script {
         address pong = vm.envAddress("PONG_ADDRESS");
 
         vm.startBroadcast();
-        PingReactive(reactive).setDestination(pong);
+        PingReactive(payable(reactive)).setDestination(pong);
         vm.stopBroadcast();
 
         console.log("Destination set:", pong, "on reactive:", reactive);

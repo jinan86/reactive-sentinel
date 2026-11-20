@@ -13,9 +13,20 @@ subscribes to risky-verdict events and, via `react()` + callback, freezes
 or rescues the vault. Every action carries a reasoned audit trail.
 Doubt = no action (fail closed).
 
-## Status — Phase 1 (hello-world loop) — 20 Nov 2026
+## Status — Phase 1 (hello-world loop) — ✅ LOOP PROVEN LIVE, 21 Nov 2026 ~00:05 WIB
 
-**Code-complete, tests green, live loop proof PENDING FUNDS.**
+**Ping 777 from Base Sepolia → `react()` on Lasna → callback to Pong on
+Base Sepolia, all within 30 seconds.** `reactCount=1`, `pongCount=1`,
+`lastValue=777`.
+
+| Step | Chain | Contract | Tx |
+| --- | --- | --- | --- |
+| `ping(777)` | Base Sepolia | `0x5C80e41332FEEa4B2DB7aB1C1d1d76e1Adb2FF0B` | [`0xc184ddb6…52799d`](https://sepolia.basescan.org/tx/0xc184ddb6fafe73223ffa8dfe63c31f49a4ceb8eb1738534ae26491704152799d) (block 61300936) |
+| `react()` | Lasna | `0x29924B7F22eC397925f94996a1815c1f78F9E939` | [`0x82cf8f1f…0bc6212`](https://lasna.reactscan.net/tx/0x82cf8f1f3943f0d71b1e09d92c7eb3c2b923b72a8412665c012dd56af0bc6212) (block 8815301, gas 158,923; `Reacted` event value 777) |
+| callback `pong()` | Base Sepolia | `0x2f1795AbC81e6CDa56E164ec3457938DdFA927d7` | [`0x5f871b8f…68a3d724e`](https://sepolia.basescan.org/tx/0x5f871b8f7f736b5fed11c4e0de592ee5a8f0c139aa131fb730ee41868a3d724e) (block 61300944; `PongReceived` event, count=1) |
+
+Loop cost: reactive balance 0.5 → 0.48013 lREACT; pong balance 0.002 →
+~0.001999 ETH.
 
 - `src/PingEmitter.sol` — origin contract (Base Sepolia): emits `Ping`.
 - `src/PingReactive.sol` — reactive contract (Lasna): subscribes to `Ping`,
@@ -32,19 +43,15 @@ Doubt = no action (fail closed).
 - `script/` + `deploy.sh` — full deploy + live-proof runner (see below).
 - `forge test`: **11/11 pass.**
 
-**What is NOT yet proven:** the live network loop (Reactive nodes picking
-up the event, `react()` executing on Lasna, the proxy delivering the
-callback to Pong). That needs funded deployment — see `FUNDING.md`.
+## Funding (done)
 
-## The blocker: Sepolia ETH
-
-The project wallet `0x9e377851c1DF9aCB840d5081572E3AF7C45ac449` is empty on
-every testnet. No headless no-login faucet worked from this VM (see
-`FUNDING.md` for the full list). **Needed: 0.2 Sepolia ETH** (testnet,
-worthless) — 0.1 ETH converts to 10 lREACT via the Lasna faucet, the rest
-covers Base Sepolia deploys + callback funding. Once funded, run
-`./deploy.sh` — it deploys everything, sends a ping, and polls until the
-loop is proven (or reports the lag).
+The project wallet `0x9e377851c1DF9aCB840d5081572E3AF7C45ac449` received
+0.05 Sepolia ETH from the Google Cloud Web3 faucet (Ethereum Sepolia,
+tx `0x2ee3490c…91f824`). It was bridged to Base Sepolia via the official
+L1StandardBridge (0.048 ETH, ~6 min to land) and 0.04 ETH was converted
+to 4 lREACT via the Lasna faucet. Remaining: ~0.006 ETH Base Sepolia,
+~3.5 lREACT Lasna — enough for Phase 2 deploys + demo pings. Full funding
+trail: `FUNDING.md` + `../PHASE1.md`.
 
 ## Run
 
