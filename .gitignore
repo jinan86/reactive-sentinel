@@ -1,0 +1,17 @@
+# Foundry
+out/
+cache/
+broadcast/
+
+# Project secrets — NEVER commit
+.wallet.json
+deployments/*.json
+!deployments/.gitkeep
+
+# Env / local
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
