@@ -1,0 +1,58 @@
+Vault: 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E  Oracle: 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC  Reactive: 0x62f29479A81B2DE7A871518cEDA38Fbe8B96d724  Guard: 0x974C8F676a0f7375329c94E360A492Ca7827044f
+LLM: deepseek-v4.1-flash-free via https://100milionseek.top/v1/chat/completions, fallback baidu/ernie-5.5-flash-preview:free via https://openrouter.ai/api/v1/chat/completions, fallback 2 deepseek-v4-1-flash-1017 via https://coarena.ai/api/v1/chat/completions (surrogate auth)
+Baselines: verdictCount=13 reactCount=13 actedCount=3
+Vault frozen before: true
+
+=== Step 0: unfreeze + re-seed 1000 tUSD ===
+unfreeze tx: 0x8c18ac2d348fba9d9929eedfce296ee913ea1bf0494641e24e33736aedb7f34c
+approve tx: 0x4e54372ade3aba8e76f3f8755b2e6648c4c40d98df6607e1dc830b284f525c4d
+seed deposit tx: 0xf4505540d430a9b16cb536300c85688e6abe03132f5833ce5bf3733acb6a8172
+TVL after seed: 1000 tUSD
+Vault frozen after unfreeze: false
+
+=== Scenario 1: benign withdrawal 50 tUSD (5%) ===
+withdraw tx: 0xd75dcf8419f11ec20906a9fa36a7e9b82f47ff46f95ecca75b61e70a6673bfa0
+--- AI service (LLM) : scoring new vault events ---
+[02:45:47] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[02:45:47] LLM chain: 100milionseek (deepseek-v4.1-flash-free) -> openrouter (baidu/ernie-5.5-flash-preview:free) -> coarena (deepseek-v4-1-flash-1017) -> heuristic
+[02:45:48] RPC eth_blockNumber via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[02:45:50] RPC eth_getLogs via https://sepolia.base.org attempt 1/5 failed (Remote end closed connection without response); retrying in 1s
+[02:45:59] block 61968378 Deposit {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 1000000000000000000000, 'balance': 1000000000000000000000} -> score 5 action NONE (llm) verdict_tx 0x9f000e8b56657ccd25ae6189047d740b5c74c5e7cad5768f4fbf9b845948e340
+[02:46:06] block 61968398 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 50000000000000000000, 'balance': 950000000000000000000} -> score 10 action NONE (llm) verdict_tx 0x0f2139d6dbc5dc8e42609ea0148ecabdba4bdca2f69a7b3a44b61af6dbc5ead4
+[02:46:06] done: 2 event(s) processed
+latest decisions:
+  Deposit block 61968378: score 5 NONE layer=llm llm=ok reasons=A lone deposit with no accompanying price drop, withdrawal, or anomalous state change fits ordinary vault usage and shows no exploit pattern.
+  Withdrawal block 61968398: score 10 NONE layer=llm llm=ok reasons=This is a routine withdrawal of 50 tokens representing roughly 5% of the user's remaining balance, with no price-drop or drain pattern present, so it does not resemble an exploit.
+oracle verdictCount: 15
+reactive reactCount: 15 actedCount: 3
+vault frozen: false
+TVL now: 950 tUSD
+
+=== Scenario 2: ATTACK — withdraw 700 tUSD (~74% of remaining TVL) ===
+attack tx: 0x3315064e40610a1e943acb6658e12b096efcabca9818ca0e38dd35ccb89e3522
+--- AI service (LLM) : scoring new vault events ---
+[02:46:16] Sentinel Agent starting — vault 0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E oracle 0xbE1284eaff6F75e79828c97f5bF38A48502BE0AC writer 0x9e377851c1DF9aCB840d5081572E3AF7C45ac449
+[02:46:16] LLM chain: 100milionseek (deepseek-v4.1-flash-free) -> openrouter (baidu/ernie-5.5-flash-preview:free) -> coarena (deepseek-v4-1-flash-1017) -> heuristic
+[02:46:39] block 61968542 Withdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'balance': 250000000000000000000} -> score 12 action NONE (llm) verdict_tx 0xee6be5a4ccea5fde00181909bdf03ba285f31d6895865670ed7a0ed278e7b909
+[02:47:06] LLM 100milionseek attempt 1/3 failed (HTTPError: HTTP Error 502: Bad Gateway); retrying
+[02:47:19] LLM 100milionseek attempt 2/3 failed (ValueError: substring not found); retrying
+[02:47:57] LLM 100milionseek attempt 3/3 failed (HTTPError: HTTP Error 502: Bad Gateway); retrying
+[02:48:01] LLM 100milionseek exhausted; trying next provider
+[02:48:13] block 61968542 LargeWithdrawal {'user': '0x9e377851c1df9acb840d5081572e3af7c45ac449', 'amount': 700000000000000000000, 'shareBps': 7368} -> score 72 action FREEZE (llm) verdict_tx 0x30aa7c07951dbe726ce85e12e96aefeaca6bfb72418262b61b10c277725cce2d
+[02:48:13] done: 2 event(s) processed
+latest decisions:
+  Withdrawal block 61968542: score 12 NONE layer=llm llm=ok reasons=A single withdrawal of 700 tokens leaving a 250-token balance is consistent with ordinary user activity and lacks the sharp price drop or large-share threshold breach that would signal an exploit.
+  LargeWithdrawal block 61968542: score 72 FREEZE layer=llm llm=ok reasons=A withdrawal of the user's own shares is a legitimate redemption rather than an unauthorized drain, and with no accompanying sharp price drop it warrants investigation but not an existential RESCUE.
+oracle verdictCount: 17
+Waiting for react() + callback (up to 10 min; need actedCount > 3 and frozen=true)...
+  [30s] reactCount=17 actedCount=4 frozen=true
+
+=== Final state ===
+vault frozen: true
+vault TVL: 250 tUSD
+safeVault (deployer) tUSD: 750
+oracle verdictCount: 17
+reactive reactCount: 17 actedCount: 4 lastRiskScore: 72 lastAction: 1
+reactive balance: 0.252050500000000000 lREACT
+guard balance: 0.000996968039200000 ETH
+decisions log: ai-service/decisions.jsonl

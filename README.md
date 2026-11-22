@@ -83,6 +83,29 @@ penilaian #11 sukses di percobaan LLM ke-3 (percobaan 1 konten kosong,
 ke-2 HTTP 502) — proxy gratis ini flaky, retry 3x yang menyelamatkan.
 Full record: [`../PHASE2.md`](../PHASE2.md).
 
+**Demo ulang #3/#4 (22 Nov ~09:45–09:57 WIB, video submission):** dua
+run lagi setelah unfreeze + re-seed, keduanya dengan semua verdict dari
+LLM. Run #3: serangan 700 tUSD dinilai **72/FREEZE oleh LLM fallback
+OpenRouter (Ernie)** setelah 100milionseek 502 3x — vault dibekukan
+(verdict #16, `react()` `0xc5c091bd…475463f`, callback
+`0x0e10c083…04281a1b`), tapi 250 tUSD tetap di vault karena FREEZE
+tidak memindahkan dana. Run #4 (dipakai di video): serangan yang sama
+dinilai **85/RESCUE oleh LLM fallback OpenRouter (Ernie)** — 100milionseek
+502 3x lagi pada prompt LargeWithdrawal — vault dibekukan + 250 tUSD
+diselamatkan (verdict #20,
+[`0x42c15a0b…497043`](https://sepolia.basescan.org/tx/0x42c15a0bd8fd75eb2ce92345802b1c2388ab335dfbabd16dd7a081f977497043)
+→ `react()`
+[`0xd6c1f4f8…35d14760`](https://lasna.reactscan.net/tx/0xd6c1f4f87e4b3dbc4b4a98443e17dd3cfd2491811ad6ee2ab1d4ad7235d14760)
+(Lasna blok 8941691) → callback
+[`0xebcf85c3…8ebe647`](https://sepolia.basescan.org/tx/0xebcf85c37b2df81143ca04557358032c258a7a24444a6c761792dc19c8ebe647)
+(blok 61971493; Frozen + Rescued 250 tUSD)). Final run #4:
+`verdictCount=21`, `reactCount=21`, `actedCount=5`, `lastRiskScore=85`,
+`lastAction=2`, `vault.frozen=true`, vault TVL 0, safeVault 1000 tUSD.
+Pelajaran jujur: model LLM yang berbeda bisa menilai skenario yang sama
+secara berbeda (72 FREEZE vs 85 RESCUE) — rantai fallback + retry yang
+membuat sistem tetap selesai. Video demo: `demo-video.mp4` (146 detik,
+slide-based, tx run #4).
+
 | Step | Chain | Contract | Tx |
 | --- | --- | --- | --- |
 | attack withdraw 700 tUSD | Base Sepolia | DemoVault `0x13F90bfd0349173A500a7E860C7C097Cf6bFbe5E` | [`0x4157bf8a…ebcfa`](https://sepolia.basescan.org/tx/0x4157bf8aa2aff10c29bffdc96b2d0c7d547d26fd30468f035c985c41180ebcfa) (block 61304825) |
@@ -109,8 +132,11 @@ Full record: [`../PHASE2.md`](../PHASE2.md).
   key via Secure Vault surrogate, never a literal value; browser
   User-Agent + retry 3x + 60s timeout). LLM may lower risk but never
   escalate beyond heuristic+15; any LLM failure falls back to
-  heuristic and is logged with its layer. LLM: 100milionseek
-  `deepseek-v4.1-flash-free` (free, 100M tokens/day). Live demo with
+  heuristic and is logged with its layer. LLM chain (22 Nov 2026):
+  100milionseek `deepseek-v4.1-flash-free` (free, 100M tokens/day)
+  first, OpenRouter `baidu/ernie-5.5-flash-preview:free` second (free,
+  $0 credits), Coarena `deepseek-v4-1-flash-1017` third (free, $1/day),
+  heuristic last. Live demo with
   LLM in the loop (20 Nov ~21:26 WIB): 3/4 verdicts LLM-scored with
   written reasons; the attack verdict fell back to heuristic after the
   free proxy returned HTTP 502 three times. Demo ulang #2 (21 Nov
@@ -169,10 +195,13 @@ ping → poll `reactCount` / `pongCount`.
 - Project testnet wallet keypair lives in `.wallet.json` (mode 600,
   gitignored). Never commit it, never paste it.
 - AI service: deterministic scorer first + LLM client
-  (100milionseek `deepseek-v4.1-flash-free` via Secure Vault surrogate,
-  key never hardcoded or logged). The free proxy is flaky under load
-  (HTTP 502 on longer scoring prompts) — the heuristic fallback covers
-  it and every decision records its layer.
+  (100milionseek `deepseek-v4.1-flash-free` first, OpenRouter
+  `baidu/ernie-5.5-flash-preview:free` second, Coarena
+  `deepseek-v4-1-flash-1017` third, all via Secure Vault surrogate,
+  keys never hardcoded or logged). The free proxy is flaky under load
+  (HTTP 502 on longer scoring prompts) — the OpenRouter and Coarena
+  fallbacks then the heuristic fallback cover it, and every decision
+  records its layer and provider.
 
 ## License
 

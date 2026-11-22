@@ -10,11 +10,22 @@ scores below the threshold map to action NONE, and any LLM failure falls
 back to the heuristic score.
 
 LLM configuration (all optional — without a key the agent runs
-heuristic-only and says so in every decision log):
-  LLM_API_KEY   API key (never hardcoded, never logged)
-  LLM_API_URL   OpenAI-compatible chat-completions endpoint
+heuristic-only and says so in every decision log). Providers are
+tried in order: 100milionseek first, then OpenRouter, then Coarena,
+then the deterministic heuristic:
+  LLM_API_URL   primary chat-completions endpoint
                 (default https://api.openai.com/v1/chat/completions)
-  LLM_MODEL     model name (default gpt-4o-mini)
+  LLM_MODEL     primary model name (default gpt-4o-mini)
+  LLM_API_KEY   primary API key (never hardcoded, never logged)
+  LLM_USE_SURROGATE=1  use the Secure Vault surrogate for the primary
+  LLM2_API_URL  OpenRouter endpoint (default https://openrouter.ai/api/v1/chat/completions)
+  LLM2_MODEL    OpenRouter model (default baidu/ernie-5.5-flash-preview:free)
+  LLM2_API_KEY  OpenRouter API key (never hardcoded, never logged)
+  LLM2_ENABLED=0  disable the OpenRouter fallback
+  LLM3_API_URL  Coarena endpoint (default https://coarena.ai/api/v1/chat/completions)
+  LLM3_MODEL    Coarena model (default deepseek-v4-1-flash-1017)
+  LLM3_API_KEY  Coarena API key (never hardcoded, never logged)
+  LLM3_ENABLED=0  disable the Coarena fallback
 
 Chain configuration (env, with sane testnet defaults):
   BASE_RPC      default https://sepolia.base.org
@@ -202,51 +213,92 @@ def heuristic_score(event, args, context):
 
 
 # ---------------------------------------------------------------- LLM layer
-def llm_score(event, args, heuristic, threshold):
-    """Optional LLM reasoning pass. Returns (score, action, reasons, meta).
+# ---------------------------------------------------------------- LLM layer
+def _llm_providers():
+    """Ordered LLM providers: 100milionseek first, OpenRouter second,
+    Coarena third.
 
-    Meta records which layer decided. Any failure (no key, network error,
-    bad JSON, out-of-range values) falls back to the heuristic verdict --
-    the LLM can never raise risk on its own, and a missing LLM never
-    blocks the pipeline.
+    Provider 1 (primary) keeps the original LLM_* env names and defaults.
+    Provider 2 (OpenRouter) uses LLM2_* env names; its defaults point at
+    the OpenRouter API with a free model, and it is enabled unless
+    LLM2_ENABLED=0. Provider 3 (Coarena) uses LLM3_* env names; its
+    defaults point at the Coarena Model API with the deepseek model, and
+    it is enabled unless LLM3_ENABLED=0. Each provider authenticates
+    with a literal key when one is set, otherwise with the Secure Vault
+    surrogate for its host.
+    """
+    providers = []
+    url1 = os.environ.get("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
+    host1 = urllib.parse.urlparse(url1).hostname or ""
+    providers.append({
+        "name": "100milionseek" if host1 == "100milionseek.top" else host1 or "primary",
+        "url": url1,
+        "model": os.environ.get("LLM_MODEL", "gpt-4o-mini"),
+        "max_tokens": int(os.environ.get("LLM_MAX_TOKENS", "200")),
+        "api_key": os.environ.get("LLM_API_KEY", ""),
+        "connection": "custom.100milionseek",
+        "allowed_hosts": ["100milionseek.top"],
+        "use_surrogate": (
+            add_surrogate_to_request is not None
+            and (os.environ.get("LLM_USE_SURROGATE", "") == "1" or host1 == "100milionseek.top")
+        ),
+    })
+    if os.environ.get("LLM2_ENABLED", "1") != "0":
+        url2 = os.environ.get("LLM2_API_URL", "https://openrouter.ai/api/v1/chat/completions")
+        host2 = urllib.parse.urlparse(url2).hostname or ""
+        providers.append({
+            "name": "openrouter",
+            "url": url2,
+            "model": os.environ.get("LLM2_MODEL", "baidu/ernie-5.5-flash-preview:free"),
+            # Ernie reasons before answering, so it needs a much bigger
+            # budget than the 200 tokens the other providers use: its
+            # reasoning trace alone is ~1000 tokens, and the JSON answer
+            # only completes with 4096 (verified live 22 Nov 2026).
+            "max_tokens": int(os.environ.get("LLM2_MAX_TOKENS", "4096")),
+            "api_key": os.environ.get("LLM2_API_KEY", ""),
+            "connection": "custom.openrouter",
+            "allowed_hosts": ["openrouter.ai"],
+            "use_surrogate": (
+                add_surrogate_to_request is not None
+                and (os.environ.get("LLM2_USE_SURROGATE", "") == "1" or host2 == "openrouter.ai")
+            ),
+        })
+    if os.environ.get("LLM3_ENABLED", "1") != "0":
+        url3 = os.environ.get("LLM3_API_URL", "https://coarena.ai/api/v1/chat/completions")
+        host3 = urllib.parse.urlparse(url3).hostname or ""
+        providers.append({
+            "name": "coarena",
+            "url": url3,
+            "model": os.environ.get("LLM3_MODEL", "deepseek-v4-1-flash-1017"),
+            "max_tokens": int(os.environ.get("LLM3_MAX_TOKENS", "200")),
+            "api_key": os.environ.get("LLM3_API_KEY", ""),
+            "connection": "custom.coarena",
+            "allowed_hosts": ["coarena.ai"],
+            "use_surrogate": (
+                add_surrogate_to_request is not None
+                and (os.environ.get("LLM3_USE_SURROGATE", "") == "1" or host3 == "coarena.ai")
+            ),
+        })
+    return providers
 
-    Auth: a literal LLM_API_KEY wins; otherwise the Secure Vault
-    surrogate for the 100milionseek proxy (auto when the URL points at
-    100milionseek.top or LLM_USE_SURROGATE=1). The surrogate is swapped
-    for the real key only on approved egress to the registered host --
-    the key value never appears in code, env, or logs.
+
+def _llm_call(provider, prompt, heuristic):
+    """One provider, up to 3 attempts. Returns (score, action, reasons, meta).
+
+    Raises the last error when the provider never answers. The caller
+    decides whether to try the next provider or fall back to heuristics.
     """
     h_score, h_action, h_reasons = heuristic
-    url = os.environ.get("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
-    model = os.environ.get("LLM_MODEL", "gpt-4o-mini")
-    api_key = os.environ.get("LLM_API_KEY", "")
-    host = urllib.parse.urlparse(url).hostname or ""
-    use_surrogate = (
-        not api_key
-        and add_surrogate_to_request is not None
-        and (os.environ.get("LLM_USE_SURROGATE", "") == "1" or host == "100milionseek.top")
-    )
-    if not api_key and not use_surrogate:
-        return h_score, h_action, h_reasons, {"layer": "heuristic_only", "llm": "skipped_no_key"}
-    prompt = (
-        "You are a DeFi security analyst. Score this vault event for exploit risk.\n"
-        f"Event: {event} {json.dumps(args, default=str)}\n"
-        f"Heuristic score: {h_score}/100 (action {ACTION_NAMES[h_action]}), reasons: {h_reasons}\n"
-        "Rules: risk_score is 0-100. action is 0 (NONE, score<70), 1 (FREEZE, 70-84), "
-        "2 (RESCUE, >=85, only for an existential drain). A single large withdrawal "
-        "after a sharp price drop is a classic exploit pattern. A lone small move is not.\n"
-        "Reply with JSON only: {\"risk_score\": <int>, \"action\": <0|1|2>, \"reasons\": \"<one sentence>\"}."
-    )
     payload = json.dumps({
-        "model": model,
+        "model": provider["model"],
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
-        "max_tokens": 200,
+        "max_tokens": provider.get("max_tokens", 200),
     }).encode()
     last_err = None
     for attempt in range(3):
         req = urllib.request.Request(
-            url, data=payload,
+            provider["url"], data=payload,
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -254,10 +306,10 @@ def llm_score(event, args, heuristic, threshold):
                 "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             },
         )
-        if use_surrogate:
-            add_surrogate_to_request(req, "custom.100milionseek", allowed_hosts=["100milionseek.top"])
+        if provider["use_surrogate"] and not provider["api_key"]:
+            add_surrogate_to_request(req, provider["connection"], allowed_hosts=provider["allowed_hosts"])
         else:
-            req.add_header("Authorization", f"Bearer {api_key}")
+            req.add_header("Authorization", f"Bearer {provider['api_key']}")
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 out = json.load(resp)
@@ -275,13 +327,66 @@ def llm_score(event, args, heuristic, threshold):
             # Action is always derived from the final score by the same
             # deterministic thresholds - the LLM supplies judgment, not control.
             action = ACTION_RESCUE if score >= 85 else ACTION_FREEZE if score >= 70 else ACTION_NONE
-            meta = {"layer": "llm", "llm": "ok", "model": model, "llm_text": text[:500]}
+            meta = {
+                "layer": "llm",
+                "provider": provider["name"],
+                "llm": "ok",
+                "model": provider["model"],
+                "served_by": out.get("model"),
+                "llm_text": text[:500],
+            }
             return score, action, reasons, meta
-        except Exception as e:  # noqa: BLE001 - retry, then fall back
+        except Exception as e:  # noqa: BLE001 - retry, then let the caller move on
             last_err = e
-            log(f"LLM attempt {attempt + 1}/3 failed ({type(e).__name__}: {str(e)[:120]}); retrying")
+            log(f"LLM {provider['name']} attempt {attempt + 1}/3 failed ({type(e).__name__}: {str(e)[:120]}); retrying")
             time.sleep(2 ** attempt)
-    return h_score, h_action, h_reasons, {"layer": "heuristic_fallback", "llm": f"error: {type(last_err).__name__}"}
+    raise last_err
+
+
+def llm_score(event, args, heuristic, threshold):
+    """Optional LLM reasoning pass, providers tried in order.
+
+    Tries 100milionseek first, then OpenRouter, then Coarena, then
+    falls back to the heuristic verdict. Returns (score, action,
+    reasons, meta). Meta records which layer decided and which
+    provider answered.
+
+    Auth: a literal key wins; otherwise the Secure Vault surrogate for
+    the provider's host (auto when the URL points at 100milionseek.top,
+    openrouter.ai or coarena.ai, or LLM_USE_SURROGATE /
+    LLM2_USE_SURROGATE / LLM3_USE_SURROGATE=1). The surrogate is
+    swapped for the real key only on approved egress to the registered
+    host -- the key value never appears in code, env, or logs.
+    """
+    h_score, h_action, h_reasons = heuristic
+    prompt = (
+        "You are a DeFi security analyst. Score this vault event for exploit risk.\n"
+        f"Event: {event} {json.dumps(args, default=str)}\n"
+        f"Heuristic score: {h_score}/100 (action {ACTION_NAMES[h_action]}), reasons: {h_reasons}\n"
+        "Rules: risk_score is 0-100. action is 0 (NONE, score<70), 1 (FREEZE, 70-84), "
+        "2 (RESCUE, >=85, only for an existential drain). A single large withdrawal "
+        "after a sharp price drop is a classic exploit pattern. A lone small move is not.\n"
+        "Reply with JSON only: {\"risk_score\": <int>, \"action\": <0|1|2>, \"reasons\": \"<one sentence>\"}."
+    )
+    tried = []
+    last_err = None
+    for provider in _llm_providers():
+        if not provider["api_key"] and not provider["use_surrogate"]:
+            log(f"LLM {provider['name']}: skipped (no key, no surrogate)")
+            continue
+        tried.append(provider["name"])
+        try:
+            return _llm_call(provider, prompt, heuristic)
+        except Exception as e:  # noqa: BLE001 - try the next provider
+            last_err = e
+            log(f"LLM {provider['name']} exhausted; trying next provider")
+    if not tried:
+        return h_score, h_action, h_reasons, {"layer": "heuristic_only", "llm": "skipped_no_key"}
+    return h_score, h_action, h_reasons, {
+        "layer": "heuristic_fallback",
+        "llm": f"error: {type(last_err).__name__}" if last_err else "error",
+        "providers_tried": tried,
+    }
 
 
 def load_wallet_key(wallet_file):
@@ -410,8 +515,12 @@ def main():
     wallet_file = os.environ.get("WALLET_FILE", os.path.join(BASE_DIR, "..", ".wallet.json"))
     pk, addr = load_wallet_key(wallet_file)
     log(f"Sentinel Agent starting — vault {vault} oracle {oracle} writer {addr}")
-    llm_on = bool(os.environ.get("LLM_API_KEY")) or os.environ.get("LLM_USE_SURROGATE", "") == "1"
-    log(f"LLM: {'enabled (' + os.environ.get('LLM_MODEL', 'gpt-4o-mini') + ')' if llm_on else 'disabled (heuristic-only)'}")
+    providers = _llm_providers()
+    usable = [p for p in providers if p["api_key"] or p["use_surrogate"]]
+    if usable:
+        log("LLM chain: " + " -> ".join(f"{p['name']} ({p['model']})" for p in usable) + " -> heuristic")
+    else:
+        log("LLM: disabled (heuristic-only)")
 
     state = load_state()
     if "last_block" not in state:

@@ -2,9 +2,10 @@
 # Sentinel end-to-end demo WITH LLM in the loop (testnet only).
 #
 # Same two scenarios as demo-attack.sh, but the AI service scores every
-# event through the 100milionseek LLM (deepseek-v4.1-flash-free via the
-# Secure Vault surrogate -- no literal key anywhere). Heuristic is the
-# fallback only; every decision records which layer decided.
+# event through the LLM chain (100milionseek first, OpenRouter fallback,
+# Coarena fallback 2 -- all via Secure Vault surrogate, no literal
+# key anywhere). Heuristic is the fallback only; every decision records
+# which layer decided.
 #
 # Pre-steps (vault is FROZEN from the previous demo): unfreeze() +
 # re-seed 1000 tUSD from the deployer wallet.
@@ -32,8 +33,20 @@ export LLM_API_URL="https://100milionseek.top/v1/chat/completions"
 export LLM_MODEL="deepseek-v4.1-flash-free"
 export LLM_USE_SURROGATE=1
 
+# Fallback LLM: OpenRouter (OpenAI-compatible), tried only if 100milionseek
+# fails all 3 attempts. Free model, $0 credits on the account.
+export LLM2_API_URL="https://openrouter.ai/api/v1/chat/completions"
+export LLM2_MODEL="baidu/ernie-5.5-flash-preview:free"
+export LLM2_USE_SURROGATE=1
+
+# Fallback LLM 2: Coarena (OpenAI-compatible), tried only if OpenRouter
+# also fails all 3 attempts. Same surrogate auth, no literal key.
+export LLM3_API_URL="https://coarena.ai/api/v1/chat/completions"
+export LLM3_MODEL="deepseek-v4-1-flash-1017"
+export LLM3_USE_SURROGATE=1
+
 echo "Vault: $VAULT  Oracle: $ORACLE  Reactive: $REACTIVE  Guard: $GUARD"
-echo "LLM: $LLM_MODEL via $LLM_API_URL (surrogate auth)"
+echo "LLM: $LLM_MODEL via $LLM_API_URL, fallback $LLM2_MODEL via $LLM2_API_URL, fallback 2 $LLM3_MODEL via $LLM3_API_URL (surrogate auth)"
 
 VERDICTS_BEFORE=$(cast call "$ORACLE" "verdictCount()(uint256)" --rpc-url "$BASE_RPC")
 REACT_BEFORE=$(cast call "$REACTIVE" "reactCount()(uint256)" --rpc-url "$LASNA_RPC")
